@@ -25,28 +25,10 @@
   //       model: UniqueModel.forCollection(User)
   //       ...
   //   });
-
   function UniqueModel(Model, attrs, options) {
     var cache = UniqueModel.getModelCache(Model);
-    var id = attrs && attrs[Model.prototype.idAttribute];
 
-    // If there's no ID, this model isn't being tracked; return
-    // a new instance
-    if (!id)
-      return new Model(attrs, options);
-
-    // Attempt to restore a cached instance
-    var instance = cache[id];
-    if (!instance) {
-      // If we haven't seen this instance before, start caching it
-      instance = new Model(attrs, options);
-      cache[id] = instance;
-    } else {
-      // Otherwise update the attributes of the cached instance
-      instance.set(attrs);
-    }
-
-    return instance;
+    return cache.get(attrs, options);
   }
 
   UniqueModel.cache = {};
@@ -66,7 +48,7 @@
       return;
 
     Model.__uniqueModelId__ = name;
-    var cache = {};
+    var cache = new ModelCache(Model);
     UniqueModel.cache[name] = cache;
     return cache;
   };
@@ -76,6 +58,40 @@
     proxy.prototype = Model.prototype;
     return proxy;
   };
+
+  function ModelCache (Model) {
+    this.instances = {};
+    this.Model = Model;
+  }
+
+  _.extend(ModelCache.prototype, {
+    add: function (id, attrs, options) {
+      var instance = new this.Model(attrs, options);
+      this.instances[id] = instance;
+      return instance;
+    },
+
+    get: function (attrs, options) {
+      var Model = this.Model;
+      var id = attrs && attrs[Model.prototype.idAttribute];
+
+      // If there's no ID, this model isn't being tracked; return
+      // a new instance
+      if (!id)
+        return new Model(attrs, options);
+
+      // Attempt to restore a cached instance
+      var instance = this.instances[id];
+      if (!instance) {
+        // If we haven't seen this instance before, start caching it
+        instance = this.add(id, attrs, options);
+      } else {
+        // Otherwise update the attributes of the cached instance
+        instance.set(attrs);
+      }
+      return instance;
+    }
+  });
 
   Backbone.UniqueModel = UniqueModel;
 
