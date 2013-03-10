@@ -1,5 +1,5 @@
 /*jshint unused:true, undef:true, strict:true*/
-/*global module, test, equal, ok, notEqual, Backbone, _ */
+/*global module, test, equal, ok, start, notEqual, asyncTest, expect, Backbone, _ */
 (function () {
   "use strict";
 
@@ -59,5 +59,36 @@
     ok(_.any(users.models, function (obj) {
       return obj === user;
     }));
+  });
+
+  asyncTest('localStorage', function () {
+    expect(1);
+
+    var User = Backbone.Model.extend({});
+    var UniqueUser = Backbone.UniqueModel(User, 'User');
+
+    var localInstance = new UniqueUser({
+      id: 1,
+      name: 'Charles Xavier'
+    });
+
+    var frame = document.createElement('iframe');
+    frame.src = 'iframe.html';
+
+    document.body.appendChild(frame);
+
+    frame.onload = function () {
+      // Append increasing timestamp in order to force localStorage
+      // onstorage event (if data isn't new, won't fire)
+      localInstance.set('name', 'Charles Francis Xavier' + ' ' + (new Date()).getTime());
+
+      // Give browser a chance to flush it's async onstorage handlers
+      setTimeout(function() {
+        start();
+
+        var remoteInstance = frame.contentWindow.xavier;
+        equal(localInstance.get('name'), remoteInstance.get('name'));
+      }, 0);
+    };
   });
 })();

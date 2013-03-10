@@ -58,7 +58,7 @@
     if (UniqueModel.cache[modelName])
       return;
 
-    var cache = new ModelCache(Model);
+    var cache = new ModelCache(Model, modelName);
     UniqueModel.cache[modelName] = cache;
     return cache;
   };
@@ -67,9 +67,10 @@
   // Encapsulates a cache for a single model.
   //
 
-  function ModelCache (Model) {
+  function ModelCache (Model, modelName) {
     this.instances = {};
     this.Model = Model;
+    this.modelName = modelName;
   }
 
   _.extend(ModelCache.prototype, {
@@ -77,6 +78,10 @@
       var instance = new this.Model(attrs, options);
       this.instances[id] = instance;
 
+      instance.on('change', function (instance) {
+        var json = JSON.stringify(instance.attributes);
+        localStorage.setItem(this.modelName + '_' + instance.id, json);
+      }, this);
       return instance;
     },
 
@@ -101,6 +106,19 @@
       return instance;
     }
   });
+
+  window.addEventListener('storage', function (evt) {
+    var key = evt.key;
+    var modelName = key.split('_')[0];
+
+    var cache = UniqueModel.getModelCache(modelName);
+
+    var json = localStorage.getItem(key);
+    var attrs = JSON.parse(json);
+
+    var instance = cache.get(attrs);
+    instance.set(attrs);
+  }, false);
 
   window.Backbone.UniqueModel = UniqueModel;
 
