@@ -3,14 +3,13 @@
 (function () {
   "use strict";
 
-  var UniqueModel = Backbone.UniqueModel;
-
   module('UniqueModel');
 
   test('constructor', function () {
-    var UserModel = Backbone.Model.extend({});
+    var User = Backbone.Model.extend({});
+    var UniqueUser = Backbone.UniqueModel(User);
 
-    var first = new UniqueModel(UserModel, {
+    var first = new UniqueUser({
       id: 1,
       name: 'Scott'
     });
@@ -18,7 +17,7 @@
     equal(1, first.id);
     equal('Scott', first.get('name'));
 
-    var second = new UniqueModel(UserModel, {
+    var second = new UniqueUser({
       id: 1,
       name: 'Scott Summers'
     });
@@ -28,7 +27,7 @@
     equal(first, second);
 
     // Smoke test
-    var third = new UniqueModel(UserModel, {
+    var third = new UniqueUser({
       id: 2,
       name: 'Jean Grey'
     });
@@ -37,9 +36,11 @@
   });
 
   test('forCollection', function () {
-    var UserModel = Backbone.Model.extend({});
+    var User = Backbone.Model.extend({});
+    var UniqueUser = Backbone.UniqueModel(User);
+
     var UserCollection = Backbone.Collection.extend({
-      model: UniqueModel.forCollection(UserModel)
+      model: UniqueUser
     });
 
     // Test that models instantiated through a collection are unique.
@@ -48,7 +49,7 @@
       { id: 2, name: 'Bobby' }
     ]);
 
-    var user = new UniqueModel(UserModel, {
+    var user = new UniqueUser({
       id: 2,
       name: 'Bobby Drake'
     });

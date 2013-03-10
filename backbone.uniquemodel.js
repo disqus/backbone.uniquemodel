@@ -3,16 +3,15 @@
 (function (window) {
   "use strict";
 
-  var Backbone = window.Backbone;
-
   // This is a factory function that enforces uniqueness of model instances.
   // It stores all instances by their ID (actual key should be specified via
   // idibute on a model).
   //
   // Example: Creating a new instance.
   //
-  //   var first  = new UniqueModel(User, { id: 1, name: "Scott" });
-  //   var second = new UniqueModel(User, { id: 1, name: "Scott Summers" });
+  //   var UniqueUser = UniqueModel(User);
+  //   var first  = new UniqueUser({ id: 1, name: "Scott" });
+  //   var second = new UniqueUser({ id: 1, name: "Scott Summers" });
   //   first === second;                     // true
   //   first.get('name') === 'Scott Summers' // true
   //
@@ -22,42 +21,51 @@
   // Example: Declaring a collection.
   //
   //   var UsersCollection = Backbone.Collection.extend({
-  //       model: UniqueModel.forCollection(User)
+  //       model: UniqueUser
   //       ...
   //   });
-  function UniqueModel(Model, attrs, options) {
-    var cache = UniqueModel.getModelCache(Model);
 
-    return cache.get(attrs, options);
+  function UniqueModel(Model, modelName) {
+    modelName = modelName || _.uniqueId('UniqueModel_');
+
+    UniqueModel.addModel(Model, modelName);
+
+    var wrapper = function (attrs, options) {
+      var cache = UniqueModel.getModelCache(modelName);
+
+      return cache.get(attrs, options);
+    };
+
+    // Backbone collections look up prototype
+    wrapper.prototype = Model.prototype;
+
+    return wrapper;
   }
 
   UniqueModel.cache = {};
 
-  // Returns the cache associated with the given Model. If we
-  // haven't seen this Model before, create a new cache.
-  UniqueModel.getModelCache = function (Model) {
-    var cache = UniqueModel.cache[Model.__uniqueModelId__];
+  // Returns the cache associated with the given Model.
+  UniqueModel.getModelCache = function (modelName) {
+    var cache = UniqueModel.cache[modelName];
     if (!cache)
-      cache = this.addModel(Model, _.uniqueId('UniqueModel_'));
+      throw "Unrecognized model: " + modelName;
 
     return cache;
   };
 
-  UniqueModel.addModel = function (Model, name) {
-    if (Model.__uniqueModelId__ && UniqueModel.cache[name])
+  UniqueModel.addModel = function (Model, modelName) {
+    // Throw error here? (added twice)
+    if (UniqueModel.cache[modelName])
       return;
 
-    Model.__uniqueModelId__ = name;
     var cache = new ModelCache(Model);
-    UniqueModel.cache[name] = cache;
+    UniqueModel.cache[modelName] = cache;
     return cache;
   };
 
-  UniqueModel.forCollection = function (Model) {
-    var proxy = _.bind(UniqueModel, {}, Model);
-    proxy.prototype = Model.prototype;
-    return proxy;
-  };
+  //
+  // Encapsulates a cache for a single model.
+  //
 
   function ModelCache (Model) {
     this.instances = {};
@@ -68,6 +76,7 @@
     add: function (id, attrs, options) {
       var instance = new this.Model(attrs, options);
       this.instances[id] = instance;
+
       return instance;
     },
 
@@ -93,6 +102,6 @@
     }
   });
 
-  Backbone.UniqueModel = UniqueModel;
+  window.Backbone.UniqueModel = UniqueModel;
 
 })(typeof global === "object" ? global : this);
