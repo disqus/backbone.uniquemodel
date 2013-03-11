@@ -3,6 +3,10 @@
 (function (window) {
   "use strict";
 
+  var localStorageEnabled = false;
+
+  var globalCache = {};
+
   // This is a factory function that enforces uniqueness of model instances.
   // It stores all instances by their ID (actual key should be specified via
   // idibute on a model).
@@ -42,11 +46,9 @@
     return wrapper;
   }
 
-  UniqueModel.cache = {};
-
   // Returns the cache associated with the given Model.
   UniqueModel.getModelCache = function (modelName) {
-    var cache = UniqueModel.cache[modelName];
+    var cache = globalCache[modelName];
     if (!cache)
       throw "Unrecognized model: " + modelName;
 
@@ -55,12 +57,39 @@
 
   UniqueModel.addModel = function (Model, modelName) {
     // Throw error here? (added twice)
-    if (UniqueModel.cache[modelName])
+    if (globalCache[modelName])
       return;
 
     var cache = new ModelCache(Model, modelName);
-    UniqueModel.cache[modelName] = cache;
+    globalCache[modelName] = cache;
     return cache;
+  };
+
+  UniqueModel.enableLocalStorage = function () {
+    localStorageEnabled = true;
+
+    // TODO: disableLocalStorage?
+    window.addEventListener('storage', UniqueModel.storageHandler, false);
+  };
+
+  UniqueModel.storageHandler = function (evt) {
+    var key = evt.key;
+
+    // This will process *all* storage events, so make sure not to choke
+    // on events we're not interested in
+    var split = key.split('_');
+    if (split.length !== 3 || split[0] !== 'UniqueModel')
+      return;
+
+    var modelName = split[1];
+
+    var cache = UniqueModel.getModelCache(modelName);
+
+    var json = localStorage.getItem(key);
+    var attrs = JSON.parse(json);
+
+    var instance = cache.get(attrs);
+    instance.set(attrs);
   };
 
   //
@@ -74,14 +103,21 @@
   }
 
   _.extend(ModelCache.prototype, {
+    getWebStorageKey: function (instance) {
+      // e.g. UniqueModel_User_12345
+      return ['UniqueModel', this.modelName, instance.id].join('_');
+    },
+
     add: function (id, attrs, options) {
       var instance = new this.Model(attrs, options);
       this.instances[id] = instance;
 
-      instance.on('change', function (instance) {
-        var json = JSON.stringify(instance.attributes);
-        localStorage.setItem(this.modelName + '_' + instance.id, json);
-      }, this);
+      if (localStorageEnabled) {
+        instance.on('sync', function (instance) {
+          var json = JSON.stringify(instance.attributes);
+          localStorage.setItem(this.getWebStorageKey(instance), json);
+        }, this);
+      }
       return instance;
     },
 
@@ -106,19 +142,6 @@
       return instance;
     }
   });
-
-  window.addEventListener('storage', function (evt) {
-    var key = evt.key;
-    var modelName = key.split('_')[0];
-
-    var cache = UniqueModel.getModelCache(modelName);
-
-    var json = localStorage.getItem(key);
-    var attrs = JSON.parse(json);
-
-    var instance = cache.get(attrs);
-    instance.set(attrs);
-  }, false);
 
   window.Backbone.UniqueModel = UniqueModel;
 

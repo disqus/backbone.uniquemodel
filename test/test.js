@@ -3,9 +3,9 @@
 (function () {
   "use strict";
 
-  module('UniqueModel');
+  module('instantiation');
 
-  test('constructor', function () {
+  test('constructor maintains uniques', function () {
     var User = Backbone.Model.extend({});
     var UniqueUser = Backbone.UniqueModel(User);
 
@@ -35,7 +35,7 @@
     notEqual(first, third);
   });
 
-  test('forCollection', function () {
+  test('collection maintains uniques', function () {
     var User = Backbone.Model.extend({});
     var UniqueUser = Backbone.UniqueModel(User);
 
@@ -61,8 +61,20 @@
     }));
   });
 
-  asyncTest('localStorage', function () {
+  module('localStorage');
+
+  test("storage handler doesn't choke unknown keys", function () {
+    Backbone.UniqueModel.storageHandler({ key: '' });
+    Backbone.UniqueModel.storageHandler({ key: 'sup' });
+    Backbone.UniqueModel.storageHandler({ key: 'hey_User_12345' });
+
+    ok(true, "didn't throw an exception");
+  });
+
+  asyncTest('syncs between windows', function () {
     expect(1);
+
+    Backbone.UniqueModel.enableLocalStorage();
 
     var User = Backbone.Model.extend({});
     var UniqueUser = Backbone.UniqueModel(User, 'User');
@@ -81,6 +93,8 @@
       // Append increasing timestamp in order to force localStorage
       // onstorage event (if data isn't new, won't fire)
       localInstance.set('name', 'Charles Francis Xavier' + ' ' + (new Date()).getTime());
+
+      localInstance.trigger('sync', localInstance);
 
       // Give browser a chance to flush it's async onstorage handlers
       setTimeout(function() {
