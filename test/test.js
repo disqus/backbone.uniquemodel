@@ -5,6 +5,13 @@
 
   module('instantiation');
 
+  // localStorage needs time to persist data on disk, and fire the onstorage
+  // event in any open windows. For most browsers, a minimum timeout was
+  // sufficient (4ms), but running IE9 in a VM was problematic. 100 ms was
+  // the lowest _reliable_ number I observed. Around 50ms, some tests would
+  // fail periodically.
+  var LS_SYNC_DURATION = 100;
+
   test('constructor maintains uniques', function () {
     var User = Backbone.Model.extend({});
     var UniqueUser = Backbone.UniqueModel(User);
@@ -110,13 +117,13 @@
     });
 
     this.loadRemoteInstance(function (remoteInstance) {
-      _.defer(function () {
+      setTimeout(function () {
         start();
 
         // Remote should have updated local
         equal(remoteInstance.get('name'), 'Charles Xavier');
         equal(localInstance.get('name'), 'Charles Xavier');
-      });
+      }, LS_SYNC_DURATION);
     });
   });
 
@@ -133,10 +140,10 @@
         name: 'Charles Francis Xavier'
       });
 
-      _.defer(function () {
+      setTimeout(function () {
         start();
         equal(remoteInstance.get('name'), 'Charles Francis Xavier');
-      });
+      }, LS_SYNC_DURATION);
     });
   });
 
@@ -156,11 +163,11 @@
       localInstance.trigger('sync', localInstance);
 
       // Give browser a chance to flush it's async onstorage handlers
-      _.defer(function() {
+      setTimeout(function() {
         start();
 
         equal(remoteInstance.get('name'), 'Charles Francis Xavier');
-      });
+      }, LS_SYNC_DURATION);
     });
   });
 
@@ -179,10 +186,10 @@
       remoteInstance.trigger('sync', remoteInstance);
 
       // Give browser a chance to flush it's async onstorage handlers
-      _.defer(function () {
+      setTimeout(function () {
         start();
         equal(localInstance.get('name'), 'Charles Francis Xavier');
-      });
+      }, LS_SYNC_DURATION);
     });
   });
 })();

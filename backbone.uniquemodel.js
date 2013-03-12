@@ -73,6 +73,9 @@
   };
 
   UniqueModel.storageHandler = function (evt) {
+    // TODO: IE fires onstorage even in the window that fired the
+    //       change. Deal with that somehow.
+
     var key = evt.key;
 
     // This will process *all* storage events, so make sure not to choke
