@@ -61,7 +61,37 @@
     }));
   });
 
-  module('localStorage');
+  module('localStorage', {
+    setup: function () {
+      var self = this;
+
+      Backbone.UniqueModel.enableLocalStorage();
+
+      this.User = Backbone.Model.extend({});
+      this.UniqueUser = Backbone.UniqueModel(this.User, 'User');
+
+      var frame = document.createElement('iframe');
+      frame.style.display = 'none';
+      frame.src = 'iframe.html';
+
+      this.frame = frame;
+
+      this.loadRemoteInstance = function (onload) {
+        frame.onload = function () {
+          var remoteInstance = frame.contentWindow.uniqueModelInstance;
+          onload.call(self, remoteInstance);
+        };
+        document.body.appendChild(frame);
+      };
+    },
+
+    teardown: function () {
+      localStorage.clear();
+
+      if (this.frame.parentNode)
+        document.body.removeChild(this.frame);
+    }
+  });
 
   test("storage handler doesn't choke unknown keys", function () {
     Backbone.UniqueModel.storageHandler({ key: '' });
@@ -71,63 +101,85 @@
     ok(true, "didn't throw an exception");
   });
 
-  function loadIframe(onload) {
-    var frame = document.createElement('iframe');
-    frame.style.display = 'none';
-    frame.src = 'iframe.html';
-    frame.onload = _.bind(onload, {}, frame);
-    document.body.appendChild(frame);
-  }
+  asyncTest('remote instance creation updates local', function () {
+    expect(2);
 
-  asyncTest('local instance creation updates remote', function () {
-    expect(1);
-
-    Backbone.UniqueModel.enableLocalStorage();
-
-    var User = Backbone.Model.extend({});
-    var UniqueUser = Backbone.UniqueModel(User, 'User');
-
-    loadIframe(function (frame) {
-      // Creating a local instance *after* a remote instance already exists,
-      // should update remote
-      var localInstance = new UniqueUser({
-        id: 1,
-        name: ['Charles Francis Xavier', (new Date()).getTime()].join(' ')
-      });
-
-      _.defer(function () {
-        start();
-        var remoteInstance = frame.contentWindow.uniqueModelInstance;
-        equal(localInstance.get('name'), remoteInstance.get('name'));
-      });
-    });
-  });
-
-  asyncTest('sync updates remote', function () {
-    expect(1);
-
-    Backbone.UniqueModel.enableLocalStorage();
-
-    var User = Backbone.Model.extend({});
-    var UniqueUser = Backbone.UniqueModel(User, 'User');
-
-    var localInstance = new UniqueUser({
+    var localInstance = new this.UniqueUser({
       id: 1,
       name: 'Charles Francis Xavier'
     });
 
-    loadIframe(function (frame) {
-      // Syncing a local instance should update remote
-      localInstance.set('name', ['Charles Francis Xavier', (new Date()).getTime()].join(' '));
+    this.loadRemoteInstance(function (remoteInstance) {
+      start();
 
+      // Remote should have updated local
+      equal(remoteInstance.get('name'), 'Charles Xavier');
+      equal(localInstance.get('name'), 'Charles Xavier');
+    });
+  });
+
+  asyncTest('local instance creation updates remote', function () {
+    expect(2);
+
+    this.loadRemoteInstance(function (remoteInstance) {
+      equal(remoteInstance.get('name'), 'Charles Xavier');
+
+      // Creating a local instance *after* a remote instance already exists,
+      // should update remote
+      new this.UniqueUser({
+        id: 1,
+        name: 'Charles Francis Xavier'
+      });
+
+      _.defer(function () {
+        start();
+        equal(remoteInstance.get('name'), 'Charles Francis Xavier');
+      });
+    });
+  });
+
+  asyncTest('local sync updates remote', function () {
+    expect(2);
+
+    var localInstance = new this.UniqueUser({
+      id: 1,
+      name: 'Charles Francis Xavier'
+    });
+
+    this.loadRemoteInstance(function (remoteInstance) {
+      equal(remoteInstance.get('name'), 'Charles Xavier');
+
+      // Syncing a local instance should update remote
+      localInstance.set('name', 'Charles Francis Xavier');
       localInstance.trigger('sync', localInstance);
 
       // Give browser a chance to flush it's async onstorage handlers
       _.defer(function() {
         start();
 
-        var remoteInstance = frame.contentWindow.uniqueModelInstance;
-        equal(localInstance.get('name'), remoteInstance.get('name'));
+        equal(remoteInstance.get('name'), 'Charles Francis Xavier');
+      });
+    });
+  });
+
+  asyncTest('remote sync updates local', function () {
+    expect(2);
+
+    var localInstance = new this.UniqueUser({
+      id: 1,
+      name: 'Charles Xavier'
+    });
+
+    this.loadRemoteInstance(function (remoteInstance) {
+      equal(remoteInstance.get('name'), 'Charles Xavier');
+
+      remoteInstance.set('name', 'Charles Francis Xavier');
+      remoteInstance.trigger('sync', remoteInstance);
+
+      // Give browser a chance to flush it's async onstorage handlers
+      _.defer(function () {
+        start();
+        equal(localInstance.get('name'), 'Charles Francis Xavier');
       });
     });
   });
