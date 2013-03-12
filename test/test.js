@@ -110,11 +110,13 @@
     });
 
     this.loadRemoteInstance(function (remoteInstance) {
-      start();
+      _.defer(function () {
+        start();
 
-      // Remote should have updated local
-      equal(remoteInstance.get('name'), 'Charles Xavier');
-      equal(localInstance.get('name'), 'Charles Xavier');
+        // Remote should have updated local
+        equal(remoteInstance.get('name'), 'Charles Xavier');
+        equal(localInstance.get('name'), 'Charles Xavier');
+      });
     });
   });
 
