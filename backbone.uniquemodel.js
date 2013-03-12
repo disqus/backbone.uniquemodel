@@ -103,6 +103,11 @@
   }
 
   _.extend(ModelCache.prototype, {
+    sync: function (instance) {
+        var json = JSON.stringify(instance.attributes);
+        localStorage.setItem(this.getWebStorageKey(instance), json);
+    },
+
     getWebStorageKey: function (instance) {
       // e.g. UniqueModel_User_12345
       return ['UniqueModel', this.modelName, instance.id].join('_');
@@ -113,10 +118,8 @@
       this.instances[id] = instance;
 
       if (localStorageEnabled) {
-        instance.on('sync', function (instance) {
-          var json = JSON.stringify(instance.attributes);
-          localStorage.setItem(this.getWebStorageKey(instance), json);
-        }, this);
+        this.sync(instance);
+        instance.on('sync', _.bind(this.sync, this));
       }
       return instance;
     },
@@ -138,6 +141,7 @@
       } else {
         // Otherwise update the attributes of the cached instance
         instance.set(attrs);
+        this.sync(instance);
       }
       return instance;
     }

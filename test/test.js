@@ -71,7 +71,39 @@
     ok(true, "didn't throw an exception");
   });
 
-  asyncTest('syncs between windows', function () {
+  function loadIframe(onload) {
+    var frame = document.createElement('iframe');
+    frame.style.display = 'none';
+    frame.src = 'iframe.html';
+    frame.onload = _.bind(onload, {}, frame);
+    document.body.appendChild(frame);
+  }
+
+  asyncTest('local instance creation updates remote', function () {
+    expect(1);
+
+    Backbone.UniqueModel.enableLocalStorage();
+
+    var User = Backbone.Model.extend({});
+    var UniqueUser = Backbone.UniqueModel(User, 'User');
+
+    loadIframe(function (frame) {
+      // Creating a local instance *after* a remote instance already exists,
+      // should update remote
+      var localInstance = new UniqueUser({
+        id: 1,
+        name: ['Charles Francis Xavier', (new Date()).getTime()].join(' ')
+      });
+
+      _.defer(function () {
+        start();
+        var remoteInstance = frame.contentWindow.uniqueModelInstance;
+        equal(localInstance.get('name'), remoteInstance.get('name'));
+      });
+    });
+  });
+
+  asyncTest('sync updates remote', function () {
     expect(1);
 
     Backbone.UniqueModel.enableLocalStorage();
@@ -81,28 +113,22 @@
 
     var localInstance = new UniqueUser({
       id: 1,
-      name: 'Charles Xavier'
+      name: 'Charles Francis Xavier'
     });
 
-    var frame = document.createElement('iframe');
-    frame.src = 'iframe.html';
-
-    document.body.appendChild(frame);
-
-    frame.onload = function () {
-      // Append increasing timestamp in order to force localStorage
-      // onstorage event (if data isn't new, won't fire)
-      localInstance.set('name', 'Charles Francis Xavier' + ' ' + (new Date()).getTime());
+    loadIframe(function (frame) {
+      // Syncing a local instance should update remote
+      localInstance.set('name', ['Charles Francis Xavier', (new Date()).getTime()].join(' '));
 
       localInstance.trigger('sync', localInstance);
 
       // Give browser a chance to flush it's async onstorage handlers
-      setTimeout(function() {
+      _.defer(function() {
         start();
 
-        var remoteInstance = frame.contentWindow.xavier;
+        var remoteInstance = frame.contentWindow.uniqueModelInstance;
         equal(localInstance.get('name'), remoteInstance.get('name'));
-      }, 0);
-    };
+      });
+    });
   });
 })();

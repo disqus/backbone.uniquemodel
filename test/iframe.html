@@ -11,7 +11,7 @@
 
   var User = Backbone.Model.extend({});
   var UniqueUser = Backbone.UniqueModel(User, 'User');
-  var xavier = new UniqueUser({
+  var uniqueModelInstance = new UniqueUser({
     id: 1,
     name: 'Charles Xavier'
   });
