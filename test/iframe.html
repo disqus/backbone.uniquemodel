@@ -11,9 +11,11 @@
 
   var User = Backbone.Model.extend({});
   var UniqueUser = Backbone.UniqueModel(User, 'User');
+
   var uniqueModelInstance = new UniqueUser({
     id: 1,
-    name: 'Charles Xavier'
+    name: 'Charles Xavier',
+    timestamp: +(new Date)
   });
   </script>
 </body>

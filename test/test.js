@@ -72,6 +72,9 @@
     setup: function () {
       var self = this;
 
+      localStorage.clear();
+      Backbone.UniqueModel.clear();
+
       Backbone.UniqueModel.enableLocalStorage();
 
       this.User = Backbone.Model.extend({});
@@ -83,20 +86,27 @@
 
       this.frame = frame;
 
-      this.loadRemoteInstance = function (onload) {
+      this.loadRemoteWindow = function (onload) {
         frame.onload = function () {
-          var remoteInstance = frame.contentWindow.uniqueModelInstance;
-          onload.call(self, remoteInstance);
+          if (onload)
+            onload.call(self, frame.contentWindow);
         };
         document.body.appendChild(frame);
+      };
+
+      this.loadRemoteInstance = function (onload) {
+        self.loadRemoteWindow(function (win) {
+          onload.call(self, win.uniqueModelInstance);
+        });
       };
     },
 
     teardown: function () {
       localStorage.clear();
 
-      if (this.frame.parentNode)
+      if (this.frame.parentNode) {
         document.body.removeChild(this.frame);
+      }
     }
   });
 
@@ -191,5 +201,41 @@
         equal(localInstance.get('name'), 'Charles Francis Xavier');
       }, LS_SYNC_DURATION);
     });
+  });
+
+  asyncTest('newly tracked local instance triggers add on remote', function () {
+    expect(2);
+
+    this.loadRemoteWindow(function (remoteWindow) {
+      remoteWindow.UniqueUser.on('uniquemodel.add', function (instance) {
+        start();
+        equal(instance.id, 1337);
+        equal(instance.get('name'), 'Logan');
+        remoteWindow.UniqueUser.off();
+      });
+
+      // Once this user is added locally, eventually it will sync via
+      // localStorage to the other window, and trigger uniquemodel.add on
+      // the unique model class (UniqueUser)
+      new this.UniqueUser({
+        id: 1337,
+        name: 'Logan'
+      });
+    });
+  });
+
+  asyncTest('newly tracked remote instance triggers add on local', function () {
+    expect(2);
+
+    this.UniqueUser.on('uniquemodel.add', function (instance) {
+      start();
+
+      equal(instance.id, 1);
+      equal(instance.get('name'), 'Charles Xavier');
+      this.UniqueUser.off();
+    }, this);
+
+    // Remote window always loads Charles Xavier
+    this.loadRemoteWindow();
   });
 })();

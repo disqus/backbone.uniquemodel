@@ -1,5 +1,5 @@
 /*jshint unused:true, undef:true, strict:true*/
-/*global global, _*/
+/*global global, _, Backbone*/
 (function (window) {
   "use strict";
 
@@ -32,19 +32,12 @@
   function UniqueModel(Model, modelName) {
     modelName = modelName || _.uniqueId('UniqueModel_');
 
-    UniqueModel.addModel(Model, modelName);
+    var cache = UniqueModel.addModel(Model, modelName);
 
-    var wrapper = function (attrs, options) {
-      var cache = UniqueModel.getModelCache(modelName);
-
-      return cache.get(attrs, options);
-    };
-
-    // Backbone collections look up prototype
-    wrapper.prototype = Model.prototype;
-
-    return wrapper;
+    return cache.modelConstructor;
   }
+
+  UniqueModel.KEY_DELIMETER = '.';
 
   // Returns the cache associated with the given Model.
   UniqueModel.getModelCache = function (modelName) {
@@ -58,7 +51,7 @@
   UniqueModel.addModel = function (Model, modelName) {
     // Throw error here? (added twice)
     if (globalCache[modelName])
-      return;
+      return globalCache[modelName];
 
     var cache = new ModelCache(Model, modelName);
     globalCache[modelName] = cache;
@@ -72,15 +65,22 @@
     window.addEventListener('storage', UniqueModel.storageHandler, false);
   };
 
+  // Clears all in-memory instances
+  UniqueModel.clear = function () {
+    for (var modelName in globalCache) {
+      if (globalCache.hasOwnProperty(modelName))
+        delete globalCache[modelName];
+    }
+  };
+
   UniqueModel.storageHandler = function (evt) {
     // TODO: IE fires onstorage even in the window that fired the
     //       change. Deal with that somehow.
-
     var key = evt.key;
 
     // This will process *all* storage events, so make sure not to choke
     // on events we're not interested in
-    var split = key.split('_');
+    var split = key.split(UniqueModel.KEY_DELIMETER);
     if (split.length !== 3 || split[0] !== 'UniqueModel')
       return;
 
@@ -91,7 +91,9 @@
     var json = localStorage.getItem(key);
     var attrs = JSON.parse(json);
 
-    var instance = cache.get(attrs);
+    var instance = cache.get(attrs, {
+      fromStorage: true
+    });
     instance.set(attrs);
   };
 
@@ -100,20 +102,33 @@
   //
 
   function ModelCache (Model, modelName) {
+    var self = this;
+
     this.instances = {};
     this.Model = Model;
     this.modelName = modelName;
+
+    var modelConstructor = function (attrs, options) {
+      return self.get(attrs, options);
+    };
+    _.extend(modelConstructor, Backbone.Events);
+
+    // Backbone collections need prototype of wrapped class
+    modelConstructor.prototype = this.Model.prototype;
+    this.modelConstructor = modelConstructor;
   }
 
   _.extend(ModelCache.prototype, {
+
     sync: function (instance) {
-        var json = JSON.stringify(instance.attributes);
-        localStorage.setItem(this.getWebStorageKey(instance), json);
+      var json = JSON.stringify(instance.attributes);
+      localStorage.setItem(this.getWebStorageKey(instance), json);
     },
 
     getWebStorageKey: function (instance) {
       // e.g. UniqueModel_User_12345
-      return ['UniqueModel', this.modelName, instance.id].join('_');
+      var str = ['UniqueModel', this.modelName, instance.id].join(UniqueModel.KEY_DELIMETER);
+      return str;
     },
 
     add: function (id, attrs, options) {
@@ -133,14 +148,20 @@
 
       // If there's no ID, this model isn't being tracked; return
       // a new instance
-      if (!id)
-        return new Model(attrs, options);
+      if (!id) {
+        instance = new Model(attrs, options);
+        instance.on('sync', _.bind(this.sync, this));
+        return instance;
+      }
 
       // Attempt to restore a cached instance
       var instance = this.instances[id];
       if (!instance) {
         // If we haven't seen this instance before, start caching it
         instance = this.add(id, attrs, options);
+        if (options && options.fromStorage) {
+          this.modelConstructor.trigger('uniquemodel.add', instance);
+        }
       } else {
         // Otherwise update the attributes of the cached instance
         instance.set(attrs);
