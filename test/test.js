@@ -1,5 +1,5 @@
 /*jshint unused:true, undef:true, strict:true*/
-/*global module, test, equal, ok, start, notEqual, asyncTest, expect, Backbone, _ */
+/*global module, test, equal, ok, start, notEqual, asyncTest, expect, Backbone, _, sinon */
 (function () {
   "use strict";
 
@@ -110,13 +110,44 @@
     }
   });
 
-  test("storage handler doesn't choke invalid/unknown keys", function () {
+  test('storage handler processes valid keys correctly', function () {
+    var restoreStub = sinon.stub(Backbone.UniqueModel, 'restoreFromCache');
+    var key;
+
+    key = 'UniqueModel.User.12345';
+    Backbone.UniqueModel.storageHandler({ key: key });
+    ok(restoreStub.calledWith(key, 'User', '12345'));
+
+    key = 'UniqueModel.User.joesmith';
+    Backbone.UniqueModel.storageHandler({ key: key });
+    ok(restoreStub.calledWith(key, 'User', 'joesmith'));
+
+    key = 'UniqueModel.User.abc123-def456-ghi789';
+    Backbone.UniqueModel.storageHandler({ key: key });
+    ok(restoreStub.calledWith(key, 'User', 'abc123-def456-ghi789'));
+
+    key = 'UniqueModel.User.abc123.def456.ghi789';
+    Backbone.UniqueModel.storageHandler({ key: key });
+    ok(restoreStub.calledWith(key, 'User', 'abc123.def456.ghi789'));
+
+    key = 'UniqueModel.User.abc123 def456 ghi789';
+    Backbone.UniqueModel.storageHandler({ key: key });
+    ok(restoreStub.calledWith(key, 'User', 'abc123 def456 ghi789'));
+
+    restoreStub.restore();
+  });
+
+  test("storage handler ignores invalid/unknown keys", function () {
+    var restoreStub = sinon.stub(Backbone.UniqueModel, 'restoreFromCache');
+
     Backbone.UniqueModel.storageHandler({ key: '' });
     Backbone.UniqueModel.storageHandler({ key: 'sup' });
     Backbone.UniqueModel.storageHandler({ key: 'hey_User_12345' });
     Backbone.UniqueModel.storageHandler({ key: 'UniqueModel.User.' }); // id missing
 
-    ok(true, "didn't throw an exception");
+    equal(restoreStub.callCount, 0);
+
+    restoreStub.restore();
   });
 
   asyncTest('remote instance creation updates local', function () {

@@ -58,13 +58,13 @@
     var key = evt.key;
 
     // This will process *all* storage events, so make sure not to choke
-    // on events we're not interested in
+    // on events we're not interested in.
 
-    // Example regex output: /UniqueModel\.(\w+).(\w+)/
+    // Example regex output: /UniqueModel\.(\w+)\.(.+)/
     var re = new RegExp([
       UniqueModel.STORAGE_NAMESPACE, // namespace (default is UniqueModel)
       '(\\w+)',                      // class name
-      '(\\w+)'                       // key
+      '(.+)'                         // key
     ].join('\\' + UniqueModel.STORAGE_KEY_DELIMETER));
 
     var match = key.match(re);
@@ -74,6 +74,10 @@
     var modelName = match[1];
     var id = match[2];
 
+    UniqueModel.restoreFromCache(key, modelName, id);
+  };
+
+  UniqueModel.restoreFromCache = function (key, modelName, id) {
     var cache = UniqueModel.getModelCache(modelName);
     cache.load(key, id);
   };
