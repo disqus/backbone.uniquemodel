@@ -135,7 +135,6 @@ Backbone.LocalStorage.sync = window.Store.sync = Backbone.localSync = function(m
 
   var resp, errorMessage, syncDfd = $.Deferred && $.Deferred(); //If $ is having Deferred - use it.
 
-  console.log(method, options);
   try {
 
     switch (method) {

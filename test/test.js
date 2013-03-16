@@ -238,4 +238,41 @@
     // Remote window always loads Charles Xavier
     this.loadRemoteWindow();
   });
+
+  asyncTest('destroying local instance triggers destroy on remote', function () {
+    expect(2);
+
+    var localInstance = new this.UniqueUser({
+      id: 1,
+      name: 'Charles Xavier'
+    });
+    this.loadRemoteInstance(function (remoteInstance) {
+      remoteInstance.on('destroy', function (instance) {
+        start();
+        equal(instance.id, 1);
+        equal(instance.get('name'), 'Charles Xavier');
+      });
+
+      localInstance.trigger('destroy', localInstance);
+    });
+  });
+
+  asyncTest('destroying remote instance triggers destroy on local', function () {
+    expect(2);
+
+    var localInstance = new this.UniqueUser({
+      id: 1,
+      name: 'Charles Xavier'
+    });
+
+    localInstance.on('destroy', function (instance) {
+      start();
+      equal(instance.id, 1);
+      equal(instance.get('name'), 'Charles Xavier');
+    });
+
+    this.loadRemoteInstance(function (remoteInstance) {
+      remoteInstance.trigger('destroy', remoteInstance);
+    });
+  });
 })();

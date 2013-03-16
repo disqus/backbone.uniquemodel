@@ -7,28 +7,6 @@
 
   var globalCache = {};
 
-  // This is a factory function that enforces uniqueness of model instances.
-  // It stores all instances by their ID (actual key should be specified via
-  // idibute on a model).
-  //
-  // Example: Creating a new instance.
-  //
-  //   var UniqueUser = UniqueModel(User);
-  //   var first  = new UniqueUser({ id: 1, name: "Scott" });
-  //   var second = new UniqueUser({ id: 1, name: "Scott Summers" });
-  //   first === second;                     // true
-  //   first.get('name') === 'Scott Summers' // true
-  //
-  // If an instance already exists, this function will simply update its
-  // attributes.
-  //
-  // Example: Declaring a collection.
-  //
-  //   var UsersCollection = Backbone.Collection.extend({
-  //       model: UniqueUser
-  //       ...
-  //   });
-
   function UniqueModel(Model, modelName) {
     modelName = modelName || _.uniqueId('UniqueModel_');
 
@@ -85,16 +63,10 @@
       return;
 
     var modelName = split[1];
+    var id = split[2];
 
     var cache = UniqueModel.getModelCache(modelName);
-
-    var json = localStorage.getItem(key);
-    var attrs = JSON.parse(json);
-
-    var instance = cache.get(attrs, {
-      fromStorage: true
-    });
-    instance.set(attrs);
+    cache.load(key, id);
   };
 
   //
@@ -120,52 +92,89 @@
 
   _.extend(ModelCache.prototype, {
 
-    sync: function (instance) {
+    newModel: function (attrs, options) {
+      var instance = new this.Model(attrs, options);
+
+      if (localStorageEnabled) {
+        if (instance.id)
+          this.save(instance);
+        instance.on('sync', _.bind(this.save, this));
+        instance.on('destroy', _.bind(this.remove, this));
+      }
+
+      return instance;
+    },
+
+    save: function (instance) {
+      if (!localStorageEnabled)
+        return;
+
+      if (!instance.id)
+        throw 'Cannot save instance without id';
+
       var json = JSON.stringify(instance.attributes);
       localStorage.setItem(this.getWebStorageKey(instance), json);
     },
 
+    remove: function (instance) {
+      if (!localStorageEnabled)
+        return;
+
+      if (!instance.id)
+        throw 'Cannot remove instance without id';
+
+      localStorage.removeItem(this.getWebStorageKey(instance));
+    },
+
+    load: function (key, id) {
+      var json = localStorage.getItem(key);
+
+      var instance, attrs;
+      if (!json && this.instances[id]) {
+        instance = this.instances[id];
+        instance.trigger('destroy', instance);
+        delete this.instances[id];
+      } else {
+        attrs = JSON.parse(json);
+        this.get(attrs, { fromStorage: true });
+      }
+    },
+
     getWebStorageKey: function (instance) {
-      // e.g. UniqueModel_User_12345
+      // e.g. UniqueModel.User.12345
       var str = ['UniqueModel', this.modelName, instance.id].join(UniqueModel.KEY_DELIMETER);
       return str;
     },
 
     add: function (id, attrs, options) {
-      var instance = new this.Model(attrs, options);
+      var instance = this.newModel(attrs, options);
       this.instances[id] = instance;
 
-      if (localStorageEnabled) {
-        this.sync(instance);
-        instance.on('sync', _.bind(this.sync, this));
-      }
       return instance;
     },
 
     get: function (attrs, options) {
+      options = options || {};
       var Model = this.Model;
       var id = attrs && attrs[Model.prototype.idAttribute];
 
       // If there's no ID, this model isn't being tracked; return
       // a new instance
-      if (!id) {
-        instance = new Model(attrs, options);
-        instance.on('sync', _.bind(this.sync, this));
-        return instance;
-      }
+      if (!id)
+        return this.newModel(attrs, options);
 
       // Attempt to restore a cached instance
       var instance = this.instances[id];
       if (!instance) {
         // If we haven't seen this instance before, start caching it
         instance = this.add(id, attrs, options);
-        if (options && options.fromStorage) {
+        if (options.fromStorage)
           this.modelConstructor.trigger('uniquemodel.add', instance);
-        }
       } else {
         // Otherwise update the attributes of the cached instance
         instance.set(attrs);
-        this.sync(instance);
+        if (!options.fromStorage)
+          this.save(instance);
       }
       return instance;
     }
