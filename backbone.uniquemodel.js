@@ -15,7 +15,8 @@
     return cache.modelConstructor;
   }
 
-  UniqueModel.KEY_DELIMETER = '.';
+  UniqueModel.STORAGE_KEY_DELIMETER = '.';
+  UniqueModel.STORAGE_NAMESPACE = 'UniqueModel';
 
   // Returns the cache associated with the given Model.
   UniqueModel.getModelCache = function (modelName) {
@@ -58,12 +59,20 @@
 
     // This will process *all* storage events, so make sure not to choke
     // on events we're not interested in
-    var split = key.split(UniqueModel.KEY_DELIMETER);
-    if (split.length !== 3 || split[0] !== 'UniqueModel')
+
+    // Example regex output: /UniqueModel\.(\w+).(\w+)/
+    var re = new RegExp([
+      UniqueModel.STORAGE_NAMESPACE, // namespace (default is UniqueModel)
+      '(\\w+)',                      // class name
+      '(\\w+)'                       // key
+    ].join('\\' + UniqueModel.STORAGE_KEY_DELIMETER));
+
+    var match = key.match(re);
+    if (!match)
       return;
 
-    var modelName = split[1];
-    var id = split[2];
+    var modelName = match[1];
+    var id = match[2];
 
     var cache = UniqueModel.getModelCache(modelName);
     cache.load(key, id);
@@ -142,7 +151,12 @@
 
     getWebStorageKey: function (instance) {
       // e.g. UniqueModel.User.12345
-      var str = ['UniqueModel', this.modelName, instance.id].join(UniqueModel.KEY_DELIMETER);
+      var str = [
+        UniqueModel.STORAGE_NAMESPACE,
+        this.modelName,
+        instance.id
+      ].join(UniqueModel.STORAGE_KEY_DELIMETER);
+
       return str;
     },
 

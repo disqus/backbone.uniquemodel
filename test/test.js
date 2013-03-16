@@ -110,10 +110,11 @@
     }
   });
 
-  test("storage handler doesn't choke unknown keys", function () {
+  test("storage handler doesn't choke invalid/unknown keys", function () {
     Backbone.UniqueModel.storageHandler({ key: '' });
     Backbone.UniqueModel.storageHandler({ key: 'sup' });
     Backbone.UniqueModel.storageHandler({ key: 'hey_User_12345' });
+    Backbone.UniqueModel.storageHandler({ key: 'UniqueModel.User.' }); // id missing
 
     ok(true, "didn't throw an exception");
   });
