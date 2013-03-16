@@ -75,10 +75,8 @@
       localStorage.clear();
       Backbone.UniqueModel.clear();
 
-      Backbone.UniqueModel.enableLocalStorage();
-
       this.User = Backbone.Model.extend({});
-      this.UniqueUser = Backbone.UniqueModel(this.User, 'User');
+      this.UniqueUser = Backbone.UniqueModel(this.User, 'User', 'localStorage');
 
       var frame = document.createElement('iframe');
       frame.style.display = 'none';
@@ -111,39 +109,44 @@
   });
 
   test('storage handler processes valid keys correctly', function () {
-    var restoreStub = sinon.stub(Backbone.UniqueModel, 'restoreFromCache');
+    var LocalStorageAdapter = Backbone.UniqueModel.LocalStorageAdapter;
+    LocalStorageAdapter.instances.User = { handleStorageEvent: function () {} };
+    var restoreStub = sinon.stub(LocalStorageAdapter.instances.User, 'handleStorageEvent');
+
     var key;
 
     key = 'UniqueModel.User.12345';
-    Backbone.UniqueModel.storageHandler({ key: key });
-    ok(restoreStub.calledWith(key, 'User', '12345'));
+    LocalStorageAdapter.onStorage({ key: key });
+    ok(restoreStub.calledWith(key, '12345'));
 
     key = 'UniqueModel.User.joesmith';
-    Backbone.UniqueModel.storageHandler({ key: key });
-    ok(restoreStub.calledWith(key, 'User', 'joesmith'));
+    LocalStorageAdapter.onStorage({ key: key });
+    ok(restoreStub.calledWith(key, 'joesmith'));
 
     key = 'UniqueModel.User.abc123-def456-ghi789';
-    Backbone.UniqueModel.storageHandler({ key: key });
-    ok(restoreStub.calledWith(key, 'User', 'abc123-def456-ghi789'));
+    LocalStorageAdapter.onStorage({ key: key });
+    ok(restoreStub.calledWith(key, 'abc123-def456-ghi789'));
 
     key = 'UniqueModel.User.abc123.def456.ghi789';
-    Backbone.UniqueModel.storageHandler({ key: key });
-    ok(restoreStub.calledWith(key, 'User', 'abc123.def456.ghi789'));
+    LocalStorageAdapter.onStorage({ key: key });
+    ok(restoreStub.calledWith(key, 'abc123.def456.ghi789'));
 
     key = 'UniqueModel.User.abc123 def456 ghi789';
-    Backbone.UniqueModel.storageHandler({ key: key });
-    ok(restoreStub.calledWith(key, 'User', 'abc123 def456 ghi789'));
+    LocalStorageAdapter.onStorage({ key: key });
+    ok(restoreStub.calledWith(key, 'abc123 def456 ghi789'));
 
     restoreStub.restore();
   });
 
   test("storage handler ignores invalid/unknown keys", function () {
-    var restoreStub = sinon.stub(Backbone.UniqueModel, 'restoreFromCache');
+    var LocalStorageAdapter = Backbone.UniqueModel.LocalStorageAdapter;
+    LocalStorageAdapter.instances.User = { handleStorageEvent: function () {} };
+    var restoreStub = sinon.stub(LocalStorageAdapter.instances.User, 'handleStorageEvent');
 
-    Backbone.UniqueModel.storageHandler({ key: '' });
-    Backbone.UniqueModel.storageHandler({ key: 'sup' });
-    Backbone.UniqueModel.storageHandler({ key: 'hey_User_12345' });
-    Backbone.UniqueModel.storageHandler({ key: 'UniqueModel.User.' }); // id missing
+    LocalStorageAdapter.onStorage({ key: '' });
+    LocalStorageAdapter.onStorage({ key: 'sup' });
+    LocalStorageAdapter.onStorage({ key: 'hey_User_12345' });
+    LocalStorageAdapter.onStorage({ key: 'UniqueModel.User.' }); // id missing
 
     equal(restoreStub.callCount, 0);
 

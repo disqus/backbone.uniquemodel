@@ -7,10 +7,8 @@ var app = app || {};
 	// Todo Model
 	// ----------
 
-	Backbone.UniqueModel.enableLocalStorage();
-
 	// Our basic **Todo** model has `title`, `order`, and `completed` attributes.
-	app.Todo = Backbone.UniqueModel(Backbone.Model.extend({
+	app.Todo = Backbone.Model.extend({
 		// Default attributes for the todo
 		// and ensure that each todo created has `title` and `completed` keys.
 		defaults: {
@@ -24,5 +22,6 @@ var app = app || {};
 				completed: !this.get('completed')
 			});
 		}
-	}), 'Todo');
+	});
+	app.Todo = Backbone.UniqueModel(app.Todo, 'Todo', 'localStorage');
 })();

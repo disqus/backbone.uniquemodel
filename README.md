@@ -45,11 +45,11 @@ If enabled, UniqueModel will attempt to ensure uniqueness of model instances acr
 
 ```javascript
 // Window 1
-Backbone.UniqueModel.enableLocalStorage();
+var UniqueUser = Backbone.UniqueModel(User, 'User', 'localStorage');
 var logan1 = new UniqueUser({ id: 4, name: 'Logan' });
 
 // Window 2
-Backbone.UniqueModel.enableLocalStorage();
+var UniqueUser = Backbone.UniqueModel(User, 'User', 'localStorage');
 var logan2 = new UniqueUser({ id: 4, name: 'Logan', power: 'Healing' });
 
 // Back to Window 1

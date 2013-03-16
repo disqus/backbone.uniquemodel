@@ -7,10 +7,8 @@
   <script src="../backbone.uniquemodel.js"></script>
 
   <script>
-  Backbone.UniqueModel.enableLocalStorage();
-
   var User = Backbone.Model.extend({});
-  var UniqueUser = Backbone.UniqueModel(User, 'User');
+  var UniqueUser = Backbone.UniqueModel(User, 'User', 'localStorage');
 
   var uniqueModelInstance = new UniqueUser({
     id: 1,

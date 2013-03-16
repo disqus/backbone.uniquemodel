@@ -3,18 +3,33 @@
 (function (window) {
   "use strict";
 
-  var localStorageEnabled = false;
-
   var globalCache = {};
 
-  function UniqueModel(Model, modelName) {
-    modelName = modelName || _.uniqueId('UniqueModel_');
+  /**
+   * UniqueModel wrapper converts regular Backbone models into
+   * unique ones.
+   *
+   * Example:
+   *   var UniqueUser = UniqueModel(User);
+   *
+   * If this is model is synced between windows, you need to
+   * specify the model's name (string) and a valid storage adapter
+   * (currently just 'localStorage').
+   *
+   * Example:
+   *   var SyncedUniqueUser = UniqueModel(User, 'User', 'localStorage');
+   */
 
-    var cache = UniqueModel.addModel(Model, modelName);
+  function UniqueModel(Model, modelName, storageAdapter) {
+    modelName = modelName || _.uniqueId('UniqueModel_');
+    storageAdapter = storageAdapter || UniqueModel.STORAGE_DEFAULT_ADAPTER;
+
+    var cache = UniqueModel.addModel(Model, modelName, storageAdapter);
 
     return cache.modelConstructor;
   }
 
+  UniqueModel.STORAGE_DEFAULT_ADAPTER = 'memory';
   UniqueModel.STORAGE_KEY_DELIMETER = '.';
   UniqueModel.STORAGE_NAMESPACE = 'UniqueModel';
 
@@ -27,21 +42,14 @@
     return cache;
   };
 
-  UniqueModel.addModel = function (Model, modelName) {
+  UniqueModel.addModel = function (Model, modelName, storageAdapter) {
     // Throw error here? (added twice)
     if (globalCache[modelName])
       return globalCache[modelName];
 
-    var cache = new ModelCache(Model, modelName);
+    var cache = new ModelCache(Model, modelName, storageAdapter);
     globalCache[modelName] = cache;
     return cache;
-  };
-
-  UniqueModel.enableLocalStorage = function () {
-    localStorageEnabled = true;
-
-    // TODO: disableLocalStorage?
-    window.addEventListener('storage', UniqueModel.storageHandler, false);
   };
 
   // Clears all in-memory instances
@@ -52,46 +60,26 @@
     }
   };
 
-  UniqueModel.storageHandler = function (evt) {
-    // TODO: IE fires onstorage even in the window that fired the
-    //       change. Deal with that somehow.
-    var key = evt.key;
+  /*
+   * Encapsulates a cache for a single model.
+   */
 
-    // This will process *all* storage events, so make sure not to choke
-    // on events we're not interested in.
-
-    // Example regex output: /UniqueModel\.(\w+)\.(.+)/
-    var re = new RegExp([
-      UniqueModel.STORAGE_NAMESPACE, // namespace (default is UniqueModel)
-      '(\\w+)',                      // class name
-      '(.+)'                         // key
-    ].join('\\' + UniqueModel.STORAGE_KEY_DELIMETER));
-
-    var match = key.match(re);
-    if (!match)
-      return;
-
-    var modelName = match[1];
-    var id = match[2];
-
-    UniqueModel.restoreFromCache(key, modelName, id);
-  };
-
-  UniqueModel.restoreFromCache = function (key, modelName, id) {
-    var cache = UniqueModel.getModelCache(modelName);
-    cache.load(key, id);
-  };
-
-  //
-  // Encapsulates a cache for a single model.
-  //
-
-  function ModelCache (Model, modelName) {
+  function ModelCache (Model, modelName, storageAdapter) {
     var self = this;
 
     this.instances = {};
     this.Model = Model;
     this.modelName = modelName;
+
+    this.storage = null;
+    if (storageAdapter === 'localStorage') {
+      this.storage = new LocalStorageAdapter(this.modelName);
+    }
+
+    if (this.storage) {
+      this.storage.on('sync', this.storageSync, this);
+      this.storage.on('destroy', this.storageDestroy, this);
+    }
 
     var modelConstructor = function (attrs, options) {
       return self.get(attrs, options);
@@ -108,60 +96,41 @@
     newModel: function (attrs, options) {
       var instance = new this.Model(attrs, options);
 
-      if (localStorageEnabled) {
+      if (this.storage) {
         if (instance.id)
-          this.save(instance);
-        instance.on('sync', _.bind(this.save, this));
-        instance.on('destroy', _.bind(this.remove, this));
+          this.storage.save(instance.id, instance.attributes);
+
+        instance.on('sync', this.instanceSync, this);
+        instance.on('destroy', this.instanceDestroy, this);
       }
 
       return instance;
     },
 
-    save: function (instance) {
-      if (!localStorageEnabled)
-        return;
-
-      if (!instance.id)
-        throw 'Cannot save instance without id';
-
-      var json = JSON.stringify(instance.attributes);
-      localStorage.setItem(this.getWebStorageKey(instance), json);
+    // Event handler when 'sync' is triggered on an instance
+    instanceSync: function (instance) {
+      if (this.storage)
+        this.storage.save(instance.id, instance.attributes);
     },
 
-    remove: function (instance) {
-      if (!localStorageEnabled)
-        return;
-
-      if (!instance.id)
-        throw 'Cannot remove instance without id';
-
-      localStorage.removeItem(this.getWebStorageKey(instance));
+    // Event handler when 'destroy' is triggered on an instance
+    instanceDestroy: function (instance) {
+      if (this.storage)
+        this.storage.remove(instance.id);
     },
 
-    load: function (key, id) {
-      var json = localStorage.getItem(key);
+    // Event handler when 'sync' is triggered on the storage adapter
+    storageSync: function (id, attrs) {
+      this.get(attrs, { fromStorage: true });
+    },
 
-      var instance, attrs;
-      if (!json && this.instances[id]) {
-        instance = this.instances[id];
+    // Event handler when 'destroy' is triggered on the storage handler
+    storageDestroy: function (id) {
+      var instance = this.instances[id];
+      if (instance) {
         instance.trigger('destroy', instance);
         delete this.instances[id];
-      } else {
-        attrs = JSON.parse(json);
-        this.get(attrs, { fromStorage: true });
       }
-    },
-
-    getWebStorageKey: function (instance) {
-      // e.g. UniqueModel.User.12345
-      var str = [
-        UniqueModel.STORAGE_NAMESPACE,
-        this.modelName,
-        instance.id
-      ].join(UniqueModel.STORAGE_KEY_DELIMETER);
-
-      return str;
     },
 
     add: function (id, attrs, options) {
@@ -192,10 +161,103 @@
         // Otherwise update the attributes of the cached instance
         instance.set(attrs);
         if (!options.fromStorage)
-          this.save(instance);
+          this.instanceSync(instance);
       }
       return instance;
     }
+  });
+
+  /**
+   * Wraps localStorage access and onstorage events. Designed
+   * so that this can be swapped out for another adapter (i.e.
+   * sessionStorage or a localStorage-backed library like lscache)
+   */
+  function LocalStorageAdapter (modelName) {
+    this.modelName = modelName;
+
+    LocalStorageAdapter.instances[modelName] = this;
+
+    // Global listener - only listen once
+    if (!LocalStorageAdapter.listener) {
+      LocalStorageAdapter.listener = window.addEventListener(
+        'storage', LocalStorageAdapter.onStorage, false
+      );
+    }
+  }
+
+  LocalStorageAdapter.instances = {};
+
+  LocalStorageAdapter.listener = null;
+
+  LocalStorageAdapter.onStorage = function (evt) {
+    // TODO: IE fires onstorage even in the window that fired the
+    //       change. Deal with that somehow.
+    var key = evt.key;
+
+    // This will process *all* storage events, so make sure not to choke
+    // on events we're not interested in.
+
+    // Example regex output: /UniqueModel\.(\w+)\.(.+)/
+    var re = new RegExp([
+      UniqueModel.STORAGE_NAMESPACE, // namespace (default is UniqueModel)
+      '(\\w+)',                      // class name
+      '(.+)'                         // key
+    ].join('\\' + UniqueModel.STORAGE_KEY_DELIMETER));
+
+    var match = key.match(re);
+    if (!match)
+      return;
+
+    var modelName = match[1];
+    var id = match[2];
+
+    var adapter = LocalStorageAdapter.instances[modelName];
+    if (!adapter)
+      return;
+
+    adapter.handleStorageEvent(key, id);
+  };
+
+  _.extend(LocalStorageAdapter.prototype, {
+    handleStorageEvent: function (key, id) {
+      var json = localStorage.getItem(key);
+      if (!json)
+        this.trigger('destroy', id);
+      else
+        this.trigger('sync', id, JSON.parse(json));
+    },
+
+    getStorageKey: function (id) {
+      // e.g. UniqueModel.User.12345
+      var str = [
+        UniqueModel.STORAGE_NAMESPACE,
+        this.modelName,
+        id
+      ].join(UniqueModel.STORAGE_KEY_DELIMETER);
+
+      return str;
+    },
+
+    save: function (id, attrs) {
+      if (!id)
+        throw 'Cannot save without id';
+
+      var json = JSON.stringify(attrs);
+      localStorage.setItem(this.getStorageKey(id), json);
+    },
+
+    remove: function (id) {
+      if (!id)
+        throw 'Cannot remove without id';
+
+      localStorage.removeItem(this.getStorageKey(id));
+    }
+  }, Backbone.Events);
+
+  // Exports
+  _.extend(UniqueModel, {
+    ModelCache: ModelCache,
+    LocalStorageAdapter: LocalStorageAdapter
   });
 
   window.Backbone.UniqueModel = UniqueModel;
