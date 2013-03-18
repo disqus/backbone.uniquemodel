@@ -27,7 +27,7 @@ Backbone.UniqueModel also guarantees that instances created through a collection
 
 ```javascript
 var UserCollection = Backbone.Collection.extend({
-    model: UniqueUser
+  model: UniqueUser
 });
 
 var users = new UserCollection([
@@ -39,7 +39,7 @@ var user = new UniqueUser({ id: 2, name: 'Henry McCoy' });
 user === users.get(2); // true
 ```
 
-### Window sync via localStorage (experimental)
+### Window sync via localStorage
 
 If enabled, UniqueModel will attempt to ensure uniqueness of model instances across windows using localStorage.
 
@@ -56,7 +56,40 @@ var logan2 = new UniqueUser({ id: 4, name: 'Logan', power: 'Healing' });
 logan1.get('power'); // Healing
 ```
 
-To minimize the disk swaps, persistence is done on object creation and on Backbone's sync event.
+#### Add event
+
+It's possible for completely new models to become available through localStorage sync. To be notified of new models, subscribe to the `uniquemodel.add` event on your UniqueModel class.
+
+For example, you can use this event to automatically add new models to your collections:
+
+```javascript
+UniqueUser.on('uniquemodel.add', function (model) {
+  userCollection.add(model);
+});
+```
+
+#### Destroy event
+
+If a model is destroyed in one window, the destroy event will be called on that model in any other open windows.
+
+In Backbone, collections automatically remove any models that trigger destroy events. So there's nothing for you to do here — just know that it happens automatically.
+
+```javascript
+// Window 1
+userCollection.add(logan1);
+
+// Window 2
+logan2.destroy(); // Triggers 'destroy' event in Window 1
+
+// Back to Window 1
+userCollection.where({ name: 'Logan' }).length === 0; // Removed from set
+```
+
+## Demo
+
+Bundled in this repository is a version of [TodoMVC](http://addyosmani.github.com/todomvc/) that has been modified to use UniqueModel. It's a good demonstration of UniqueModel's window syncing abilities. Open up the demo in multiple windows, and observe your changes propagate instantly between each window intance.
+
+You can [try the demo live on GitHub](http://disqus.github.com/backbone.uniquemodel/todomvc), or you can run it yourself from the repository.
 
 ## Running Tests
 
@@ -70,6 +103,19 @@ $ python -m SimpleHTTPServer 8000
 
 Then open http://localhost:8000/tests/ and you're off to the races.
 
+## Browser support
+
+UniqueModel has been verified working in the following browsers:
+
+* Internet Explorer 8+ (localStorage sync requires IE9+)
+* Chrome 25
+* Safari 6
+* Firefox 18
+
+### IE8 and localStorage sync
+
+Despite [implementing webstorage]((http://caniuse.com/namevalue-storage), IE8's onstorage event doesn't communicate what data changed. There are [workarounds](http://jsfiddle.net/rodneyrehm/bAhJL/), which I plan to explore in a future version.
+
 ## Acknowledgments
 
-Backbone.UniqueModel is brought to you by [Ben Vinegar](http://github.com/benvinegar), [Anton Kovalyov](http://github.com/antonkovalyov), and [Burak Yigit Kaya](http://github.com/byk).
+Backbone.UniqueModel is written by [Ben Vinegar](http://github.com/benvinegar), based on work from [Anton Kovalyov](http://github.com/antonkovalyov) and [Burak Yigit Kaya](http://github.com/byk).
