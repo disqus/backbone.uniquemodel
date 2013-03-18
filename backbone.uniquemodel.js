@@ -179,14 +179,16 @@
 
     // Global listener - only listen once
     if (!LocalStorageAdapter.listener) {
-      LocalStorageAdapter.listener = window.addEventListener(
-        'storage', LocalStorageAdapter.onStorage, false
-      );
+      LocalStorageAdapter.listener = window.addEventListener ?
+        window.addEventListener('storage', LocalStorageAdapter.onStorage, false) :
+        window.attachEvent('onstorage', LocalStorageAdapter.onStorage);
     }
   }
 
+  // Hash of LocalStorageAdapter instances
   LocalStorageAdapter.instances = {};
 
+  // Reference to the global onstorage handler
   LocalStorageAdapter.listener = null;
 
   LocalStorageAdapter.onStorage = function (evt) {

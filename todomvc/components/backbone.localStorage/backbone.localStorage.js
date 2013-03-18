@@ -38,11 +38,26 @@ function guid() {
 // window.Store is deprectated, use Backbone.LocalStorage instead
 Backbone.LocalStorage = window.Store = function(name) {
   this.name = name;
-  var store = this.localStorage().getItem(this.name);
-  this.records = (store && store.split(",")) || [];
+
+  this.restore();
+
+  var onstorage = _.bind(function (evt) {
+    if (evt.key === this.name)
+      this.restore();
+  }, this);
+
+  if (window.addEventListener)
+    window.addEventListener('storage', onstorage, false);
+  else
+    window.attachEvent('onstorage', onstorage);
 };
 
 _.extend(Backbone.LocalStorage.prototype, {
+  // Updates this.records
+  restore: function () {
+    var store = this.localStorage().getItem(this.name);
+    this.records = (store && store.split(",")) || [];
+  },
 
   // Save the current state of the **Store** to *localStorage*.
   save: function() {
