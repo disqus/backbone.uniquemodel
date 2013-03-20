@@ -87,6 +87,8 @@ userCollection.where({ name: 'Logan' }).length === 0; // Removed from set
 
 ## Demo
 
+[<img src="assets/youtube-thumb.png" width="420" height="315"/>](http://www.youtube.com/watch?v=DAGOvXq-b48)
+
 Bundled in this repository is a version of [TodoMVC](http://addyosmani.github.com/todomvc/) that has been modified to use UniqueModel. It's a good demonstration of UniqueModel's window syncing abilities. Open up the demo in multiple windows, and observe your changes propagate instantly between each window intance.
 
 You can [try the demo live on GitHub](http://disqus.github.com/backbone.uniquemodel/todomvc), or you can run it yourself from the repository.
