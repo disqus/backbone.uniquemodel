@@ -1,7 +1,7 @@
 Backbone.UniqueModel
 ======================
 
-Backbone.UniqueModel ensures unique modal instances across your application. It can even guarantee unique model data in code running on different windows.
+Backbone.UniqueModel ensures unique model instances across your application. It will also synchronize model data between windows/iframes using localStorage.
 
 ## Usage
 
@@ -90,6 +90,11 @@ userCollection.where({ name: 'Logan' }).length === 0; // Removed from set
 Bundled in this repository is a version of [TodoMVC](http://addyosmani.github.com/todomvc/) that has been modified to use UniqueModel. It's a good demonstration of UniqueModel's window syncing abilities. Open up the demo in multiple windows, and observe your changes propagate instantly between each window intance.
 
 You can [try the demo live on GitHub](http://disqus.github.com/backbone.uniquemodel/todomvc), or you can run it yourself from the repository.
+
+If you're curious, this demo was done by adding only 2 lines of code:
+
+* Making Todo as a UniqueModel class ([link](https://github.com/disqus/backbone.uniquemodel/blob/master/todomvc/js/models/todo.js#L26))
+* Binding the TodoCollection to the `uniquemodel.add` event ([link](https://github.com/disqus/backbone.uniquemodel/blob/master/todomvc/js/collections/todos.js#L49))
 
 ## Running Tests
 
