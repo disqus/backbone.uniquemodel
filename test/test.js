@@ -310,4 +310,17 @@
       remoteInstance.trigger('destroy', remoteInstance);
     });
   });
+
+  test('UniqueModel preserves model`s static attributes', function () {
+    var User = Backbone.Model.extend({}, { someStaticAttribute: 'test' });
+    var UniqueUser = Backbone.UniqueModel(User);
+
+    equal(UniqueUser.someStaticAttribute, 'test');
+
+    // example below shows Backbone extend behavior
+    //
+    // var ExtendedUser = User.extend(User);
+    // equal(ExtendedUser.someStaticAttribute, 'test');
+  });
+
 })();
