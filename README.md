@@ -121,7 +121,7 @@ UniqueModel has been verified working in the following browsers:
 
 ### IE8 and localStorage sync
 
-Despite [implementing webstorage]((http://caniuse.com/namevalue-storage), IE8's onstorage event doesn't communicate what data changed. There are [workarounds](http://jsfiddle.net/rodneyrehm/bAhJL/), which I plan to explore in a future version.
+Despite [implementing webstorage](http://caniuse.com/namevalue-storage), IE8's onstorage event doesn't communicate what data changed. There are [workarounds](http://jsfiddle.net/rodneyrehm/bAhJL/), which I plan to explore in a future version.
 
 ## Acknowledgments
 
