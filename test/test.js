@@ -109,7 +109,7 @@
   });
 
   test('storage handler processes valid keys correctly', function () {
-    var LocalStorageAdapter = Backbone.UniqueModel.LocalStorageAdapter;
+    var LocalStorageAdapter = Backbone.UniqueModel.StorageAdapter;
     LocalStorageAdapter.instances.User = { handleStorageEvent: function () {} };
     var restoreStub = sinon.stub(LocalStorageAdapter.instances.User, 'handleStorageEvent');
 
@@ -139,7 +139,7 @@
   });
 
   test("storage handler ignores invalid/unknown keys", function () {
-    var LocalStorageAdapter = Backbone.UniqueModel.LocalStorageAdapter;
+    var LocalStorageAdapter = Backbone.UniqueModel.StorageAdapter;
     LocalStorageAdapter.instances.User = { handleStorageEvent: function () {} };
     var restoreStub = sinon.stub(LocalStorageAdapter.instances.User, 'handleStorageEvent');
 
