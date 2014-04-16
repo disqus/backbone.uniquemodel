@@ -1,6 +1,24 @@
 /*jshint unused:true, undef:true, strict:true*/
 /*global global, _, Backbone*/
-(function (window) {
+(function(root, factory) {
+
+  // try AMD
+  if (typeof define === 'function' && define.amd) {
+    define(['backbone'], function (Backbone) {
+      Backbone.UniqueModel = factory(Backbone);
+    });
+
+  // Next for Node.js or CommonJS
+  } else if (typeof exports !== 'undefined') {
+    var Backbone = require('backbone');
+    Backbone.UniqueModel = factory(Backbone);
+
+  // else just attach to the Backbone global
+  } else {
+    root.Backbone.UniqueModel = factory(root.Backbone);
+  }
+
+}(this, function(Backbone) {
   "use strict";
 
   var globalCache = {};
@@ -266,6 +284,6 @@
     StorageAdapter: StorageAdapter
   });
 
-  window.Backbone.UniqueModel = UniqueModel;
+  return UniqueModel;
 
-})(typeof global === "object" ? global : this);
+}));
