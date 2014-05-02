@@ -171,8 +171,23 @@
       if (!id)
         return this.newModel(attrs, options);
 
-      // Attempt to restore a cached instance
+      // Attempt to restore a locally cached instance
       var instance = this.instances[id];
+
+      // Attempt to restore a cached instance from storage
+      if(this.storage &&
+
+         // if this wasn't from a storage event
+         !options.fromStorage &&
+
+         // and there isn't already an existing instance
+         !instance
+        ) {
+          var instanceAttrs = this.storage.getFromStorage(this.storage.getStorageKey(id));
+          if (instanceAttrs)
+            instance = this.add(id, instanceAttrs, options);
+      }
+
       if (!instance) {
         // If we haven't seen this instance before, start caching it
         instance = this.add(id, attrs, options);
@@ -244,11 +259,19 @@
 
   _.extend(StorageAdapter.prototype, {
     handleStorageEvent: function (key, id) {
-      var json = this.store.getItem(key);
-      if (!json)
+      var attrs = this.getFromStorage(key);
+      if (!attrs)
         this.trigger('destroy', id);
       else
-        this.trigger('sync', id, JSON.parse(json));
+        this.trigger('sync', id, attrs);
+    },
+
+    getFromStorage: function (key) {
+      try {
+        return JSON.parse(this.store.getItem(key));
+      } catch (err) {
+        return;
+      }
     },
 
     getStorageKey: function (id) {

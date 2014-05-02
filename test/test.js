@@ -192,6 +192,23 @@
     });
   });
 
+  asyncTest('local instance creation checks storage for cached instances', function () {
+    expect(1);
+
+    this.loadRemoteInstance(function (remoteInstance) {
+      var localInstance = new this.UniqueUser({
+        id: 1
+      });
+
+      // Give browser a chance to flush it's async onstorage handlers
+      setTimeout(function() {
+        start();
+        equal(localInstance.get('name'), 'Charles Xavier');
+      }, LS_SYNC_DURATION);
+
+    });
+  });
+
   asyncTest('local sync updates remote', function () {
     expect(2);
 
