@@ -123,6 +123,12 @@
     newModel: function (attrs, options) {
       var instance = new this.Model(attrs, options);
 
+      if(!instance.id) {
+        instance.once('change:'+instance.idAttribute, function() {
+          if(!this.instances[instance.id]) this.instances[instance.id] = instance;
+        }, this);
+      }
+
       if (this.storage) {
         if (instance.id)
           this.storage.save(instance.id, instance.attributes);
