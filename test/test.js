@@ -42,6 +42,13 @@
     notEqual(first, third);
   });
 
+  test('preserves model\'s static attributes', function () {
+    var User = Backbone.Model.extend({}, { someStaticAttribute: 'test' });
+    var UniqueUser = Backbone.UniqueModel(User);
+
+    equal(UniqueUser.someStaticAttribute, 'test');
+  });
+
   test('collection maintains uniques', function () {
     var User = Backbone.Model.extend({});
     var UniqueUser = Backbone.UniqueModel(User);
