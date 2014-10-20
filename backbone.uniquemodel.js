@@ -123,9 +123,12 @@
     newModel: function (attrs, options) {
       var instance = new this.Model(attrs, options);
 
-      if(!instance.id) {
-        instance.once('change:'+instance.idAttribute, function() {
-          if(!this.instances[instance.id]) this.instances[instance.id] = instance;
+      if (!instance.id) {
+        // If this model currently has no id, but gains one later (e.g. via sync),
+        // then add it to the list of tracked instances
+        instance.once('change:' + instance.idAttribute, function () {
+          if (!this.instances[instance.id])
+            this.instances[instance.id] = instance;
         }, this);
       }
 
