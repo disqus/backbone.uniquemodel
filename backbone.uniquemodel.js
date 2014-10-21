@@ -104,6 +104,12 @@
     var modelConstructor = function (attrs, options) {
       return self.get(attrs, options);
     };
+
+    // Extend Model's static properties onto new
+    _.extend(modelConstructor, Model);
+
+    // NOTE: currently possible for Backbone.Events functions to collide with
+    //       Model static properties e.g. Model.on vs Backbone.Events.on
     _.extend(modelConstructor, Backbone.Events);
 
     // Backbone collections need prototype of wrapped class
