@@ -68,6 +68,28 @@
     }));
   });
 
+  test('destroying intance removes from cache', function () {
+    var User = Backbone.Model.extend({});
+    var UniqueUser = Backbone.UniqueModel(User, 'DestroyTestUser');
+
+    var user = new UniqueUser({
+      id: 2,
+      name: 'Bobby Drake'
+    });
+
+    var modelCache = Backbone.UniqueModel.getModelCache('DestroyTestUser');
+    var model = modelCache.get({ id: 2});
+
+    equal(model, user);
+
+    model.trigger('destroy', model);
+
+    // Note that modelCache.get will create a new instance; so just verify
+    // new instance doesn't match old one
+    model = modelCache.get({ id: 2});
+    notEqual(model, user);
+  });
+
   module('localStorage', {
     setup: function () {
       var self = this;
