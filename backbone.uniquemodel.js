@@ -126,10 +126,10 @@
       if (this.storage) {
         if (instance.id)
           this.storage.save(instance.id, instance.attributes);
-
-        instance.on('sync', this.instanceSync, this);
-        instance.on('destroy', this.instanceDestroy, this);
       }
+
+      instance.on('sync', this.instanceSync, this);
+      instance.on('destroy', this.instanceDestroy, this);
 
       return instance;
     },
@@ -142,8 +142,14 @@
 
     // Event handler when 'destroy' is triggered on an instance
     instanceDestroy: function (instance) {
+      var id = instance.id;
       if (this.storage)
-        this.storage.remove(instance.id);
+        this.storage.remove(id);
+
+      // Stop tracking this model; otherwise mem leak (there are other
+      // sources of memory leaks we need to address, but hey, here's one)
+      if (this.instances[id])
+        delete this.instances[id];
     },
 
     // Event handler when 'sync' is triggered on the storage adapter
