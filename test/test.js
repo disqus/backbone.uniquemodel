@@ -49,6 +49,17 @@
     equal(UniqueUser.someStaticAttribute, 'test');
   });
 
+  test("uniques are maintained also when the ID is set retroactively", function () {
+    var User = Backbone.Model.extend({});
+    var UniqueUser = Backbone.UniqueModel(User);
+
+    var newUser = new UniqueUser({name: 'John Doe'});
+    newUser.set("id", 9);
+
+    var sameUser = new UniqueUser({id: 9});
+    equal(newUser, sameUser);
+  });
+
   test('collection maintains uniques', function () {
     var User = Backbone.Model.extend({});
     var UniqueUser = Backbone.UniqueModel(User);
