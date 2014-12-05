@@ -1,0 +1,27 @@
+{
+  "name": "backbone.uniquemodel",
+  "description": "Backbone.UniqueModel ensures unique model instances across your application.",
+  "homepage": "https://github.com/disqus/backbone.uniquemodel",
+  "main": "./backbone.uniquemodel.js",
+  "license": "Apache",
+  "version": "0.9.0",
+  "keywords": [
+    "backbone",
+    "localStorage",
+    "sync"
+  ],
+  "author": {
+    "name": "Ben Vinegar"
+  },
+  "ignore": [
+    "assets",
+    "test",
+    "todomvc",
+    "package.json"
+  ],
+  "dependencies": {
+    "backbone": "1.0.0 - 1.1.2",
+    "underscore": "1.4.4 - 1.6.0",
+    "jquery": "^1.8.0 || ^2.0.0"
+  }
+}
